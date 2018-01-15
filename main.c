@@ -24,7 +24,7 @@ const size_t _chunk_gb = _P_GB;
 double _wstart_time;
 double _wfinish_time;
 //#define DEBUG
-//#define CLIENT
+#define CLIENT
 
 void bench_zmq_tcp_client(const char *endpoint, unsigned s_s, size_t s_size)
 {
@@ -302,10 +302,10 @@ int main(int argc, char **argv)
            strtoul(argv[3], NULL, 10));
 #endif
     if (!strcmp(argv[1], "zmq-server"))
-        bench_zmq_tcp_server("tcp://*:8888", (unsigned int) strtoul(argv[2], NULL, 10),
+        bench_zmq_tcp_server("pgm://enp0s25;239.192.1.1:5555", (unsigned int) strtoul(argv[2], NULL, 10),
                              strtoul(argv[3], NULL, 10));
     else if (!strcmp(argv[1], "zmq-client"))
-        bench_zmq_tcp_client("tcp://127.0.0.1:8888", (unsigned int) strtoul(argv[2], NULL, 10),
+        bench_zmq_tcp_client("pgm://enp0s25;239.192.1.1:5555", (unsigned int) strtoul(argv[2], NULL, 10),
                              strtoul(argv[3], NULL, 10));
     else
         bench_mpi_tcp((unsigned int) strtoul(argv[2], NULL, 10), strtoul(argv[3], NULL, 10));
