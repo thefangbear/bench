@@ -23,50 +23,47 @@ const size_t _chunk_gb = _P_GB;
 
 double _wstart_time;
 double _wfinish_time;
-//#define DEBUG
 #define CLIENT
-
+#define DEBUG
 void bench_zmq_tcp_client(const char *endpoint, unsigned s_s, size_t s_size)
 {
 
     void *data;
     void *ctx = zmq_ctx_new();
-    void *socket = zmq_socket(ctx, ZMQ_SUB);
+    void *socket = zmq_socket(ctx, ZMQ_PUB);
     size_t p;
     _wstart_time = MPI_Wtime();
-
-    if (zmq_connect(socket, endpoint)) {
+    printf("Connecting to %s\n", endpoint);
+    if (zmq_bind(socket, endpoint)) {
         printf("Error!\n");
         return;
     }
-    char c = 's';
-    zmq_send(socket, (void *) &c, sizeof(char), 0);
+    sleep(10);
+    zmq_send(socket, "A",1,ZMQ_SNDMORE);
+    zmq_send(socket, "S",1,0);
+    _wstart_time=MPI_Wtime();
     switch (s_s) {
         case S_KB:
             for (p = 0; p < s_size; p += _chunk_kb) {
 #ifdef DEBUG
                 printf("sending %lu/%lu parts\n", p, s_size);
 #endif
+		zmq_send(socket, "A", 1, ZMQ_SNDMORE);
                 data = malloc(_chunk_kb);
-                zmq_send(socket, data, _chunk_kb, ZMQ_SNDMORE);
+                zmq_send(socket, data, _chunk_kb, 0);
                 free(data);
             }
-            data = malloc(_chunk_kb);
-            zmq_send(socket, data, _chunk_kb, 0);
-            free(data);
             break;
         case S_MB:
             for (p = 0; p < s_size; p += _chunk_mb) {
 #ifdef DEBUG
                 printf("sending %lu/%lu parts\n", p, s_size);
 #endif
-                data = malloc(_chunk_mb);
-                zmq_send(socket, data, _chunk_mb, ZMQ_SNDMORE);
+                zmq_send(socket, "A", 1, ZMQ_SNDMORE); 
+	       data = malloc(_chunk_mb);
+                zmq_send(socket, data, _chunk_mb,0);
                 free(data);
             }
-            data = malloc(_chunk_mb);
-            zmq_send(socket, data, _chunk_mb, 0);
-            free(data);
             break;
         case S_GB:
             for (p = 0; p < s_size; p += _chunk_gb) {
@@ -98,15 +95,21 @@ void bench_zmq_tcp_server(const char *endpoint, unsigned s_s, size_t s_size)
 {
     void *data;
     void *ctx = zmq_ctx_new();
-    void *socket = zmq_socket(ctx, ZMQ_PUB);
+    void *socket = zmq_socket(ctx, ZMQ_SUB);
     size_t p;
     char c;
     double t_start = 0, t_end = 0;
-    if (zmq_bind(socket, endpoint)) {
+    printf("Binding to %s\n", endpoint);
+    if (zmq_connect(socket, endpoint)) {
         printf("Error!\n");
         return;
     }
+    zmq_setsockopt(socket, ZMQ_SUBSCRIBE, "A", 1);
+    zmq_setsockopt(socket, ZMQ_SUBSCRIBE, "A", 1);
+    char buf;
+    zmq_recv(socket, &buf, 1, 0);
     zmq_recv(socket, &c, 1, 0);
+    unsigned i;
     t_start = MPI_Wtime();
     switch (s_s) {
         case S_KB:
@@ -115,15 +118,10 @@ void bench_zmq_tcp_server(const char *endpoint, unsigned s_s, size_t s_size)
                 printf("recving %lu/%lu parts\n", p, s_size);
 #endif
                 data = malloc(_chunk_kb);
+		zmq_recv(socket, &buf, 1, 0);
                 zmq_recv(socket, data, _chunk_kb, 0);
-
-                printf("recving %lu/%lu parts\n", p, s_size);
-
                 free(data);
             }
-            data = malloc(_chunk_kb);
-            zmq_recv(socket, data, _chunk_kb, 0);
-            free(data);
             break;
         case S_MB:
 
@@ -302,10 +300,10 @@ int main(int argc, char **argv)
            strtoul(argv[3], NULL, 10));
 #endif
     if (!strcmp(argv[1], "zmq-server"))
-        bench_zmq_tcp_server("pgm://enp0s25;239.192.1.1:5555", (unsigned int) strtoul(argv[2], NULL, 10),
+        bench_zmq_tcp_server("tcp://127.0.0.1:3993", (unsigned int) strtoul(argv[2], NULL, 10),
                              strtoul(argv[3], NULL, 10));
     else if (!strcmp(argv[1], "zmq-client"))
-        bench_zmq_tcp_client("pgm://enp0s25;239.192.1.1:5555", (unsigned int) strtoul(argv[2], NULL, 10),
+        bench_zmq_tcp_client("tcp://127.0.0.1:3993", (unsigned int) strtoul(argv[2], NULL, 10),
                              strtoul(argv[3], NULL, 10));
     else
         bench_mpi_tcp((unsigned int) strtoul(argv[2], NULL, 10), strtoul(argv[3], NULL, 10));
