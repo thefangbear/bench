@@ -24,7 +24,7 @@ const size_t _chunk_gb = _P_GB;
 double _wstart_time;
 double _wfinish_time;
 #define CLIENT
-#define DEBUG
+//#define DEBUG
 void bench_zmq_tcp_client(const char *endpoint, unsigned s_s, size_t s_size)
 {
 
@@ -42,7 +42,15 @@ void bench_zmq_tcp_client(const char *endpoint, unsigned s_s, size_t s_size)
     zmq_send(socket, "A",1,ZMQ_SNDMORE);
     zmq_send(socket, "S",1,0);
     _wstart_time=MPI_Wtime();
-    switch (s_s) {
+
+	while(1) {
+		data = malloc(_chunk_mb);
+		zmq_send(socket, "A", 1, ZMQ_SNDMORE);
+		zmq_send(socket, data, _chunk_mb, 0);
+		free(data);
+	}
+	return ;
+	switch (s_s) {
         case S_KB:
             for (p = 0; p < s_size; p += _chunk_kb) {
 #ifdef DEBUG
